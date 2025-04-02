@@ -20,10 +20,12 @@ function App() {
   const [selectedLayer, setSelectedLayer] = useState(null);
 
   const handleToolSelect = (tool) => {
+    console.log("Tool selected:", tool);
     setSelectedTool(tool);
   };
 
   const handleLayerToggle = (layerId) => {
+    console.log("Layer toggled:", layerId);
     setLayers((prev) => ({
       ...prev,
       [layerId]: {
@@ -34,6 +36,7 @@ function App() {
   };
 
   const handleLayerSelect = (layerId) => {
+    console.log("Layer selected:", layerId);
     setSelectedLayer(layerId);
   };
 
@@ -47,7 +50,11 @@ function App() {
       <CssBaseline />
       <Toolbar onToolSelect={handleToolSelect} selectedTool={selectedTool} />
       <Box sx={{ flex: 1, display: "flex" }}>
-        <LayoutEditor selectedTool={selectedTool} />
+        <LayoutEditor
+          selectedTool={selectedTool}
+          selectedLayer={selectedLayer}
+          layers={layers}
+        />
         <LayerPanel
           layers={layers}
           onLayerToggle={handleLayerToggle}

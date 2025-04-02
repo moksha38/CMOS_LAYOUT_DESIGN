@@ -8,14 +8,22 @@ const GRID_COLOR = "#ddd";
 const MIN_SCALE = 0.1;
 const MAX_SCALE = 5;
 
-const LayoutEditor = ({ selectedTool }) => {
+const LAYER_COLORS = {
+  metal1: { fill: "rgba(255, 0, 0, 0.3)", stroke: "#ff0000" },
+  metal2: { fill: "rgba(0, 255, 0, 0.3)", stroke: "#00ff00" },
+  poly: { fill: "rgba(0, 0, 255, 0.3)", stroke: "#0000ff" },
+  diffusion: { fill: "rgba(255, 255, 0, 0.3)", stroke: "#ffff00" },
+  well: { fill: "rgba(255, 0, 255, 0.3)", stroke: "#ff00ff" },
+  contact: { fill: "rgba(0, 255, 255, 0.3)", stroke: "#00ffff" },
+};
+
+const LayoutEditor = ({ selectedTool, selectedLayer, layers }) => {
   const [shapes, setShapes] = useState([]);
   const [isDrawing, setIsDrawing] = useState(false);
   const [newShape, setNewShape] = useState(null);
   const [gridLines, setGridLines] = useState({ vertical: [], horizontal: [] });
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [selectedShape, setSelectedShape] = useState(null);
   const stageRef = useRef(null);
 
   // Create grid lines
@@ -94,7 +102,15 @@ const LayoutEditor = ({ selectedTool }) => {
   };
 
   const handleMouseDown = (e) => {
-    if (selectedTool === "rectangle") {
+    console.log("Mouse down event:", {
+      selectedTool,
+      selectedLayer,
+      layers,
+      isDrawing,
+    });
+
+    if (selectedTool === "rectangle" && selectedLayer) {
+      console.log("Starting to draw rectangle");
       const pos = e.target.getStage().getPointerPosition();
       const scaledPos = {
         x: (pos.x - position.x) / scale,
@@ -107,12 +123,19 @@ const LayoutEditor = ({ selectedTool }) => {
         y: snapToGrid(scaledPos.y),
         width: 0,
         height: 0,
+        layer: selectedLayer,
       });
     }
   };
 
   const handleMouseMove = (e) => {
     if (!isDrawing) return;
+    console.log("Mouse move event:", {
+      isDrawing,
+      newShape,
+      selectedTool,
+      selectedLayer,
+    });
 
     const pos = e.target.getStage().getPointerPosition();
     const scaledPos = {
@@ -133,6 +156,12 @@ const LayoutEditor = ({ selectedTool }) => {
 
   const handleMouseUp = () => {
     if (!isDrawing) return;
+    console.log("Mouse up event:", {
+      isDrawing,
+      newShape,
+      selectedTool,
+      selectedLayer,
+    });
 
     setIsDrawing(false);
     if (newShape) {
@@ -144,6 +173,7 @@ const LayoutEditor = ({ selectedTool }) => {
           y: newShape.height < 0 ? newShape.y + newShape.height : newShape.y,
           width: Math.abs(newShape.width),
           height: Math.abs(newShape.height),
+          layer: newShape.layer,
         };
         setShapes([...shapes, normalizedShape]);
       }
@@ -152,7 +182,15 @@ const LayoutEditor = ({ selectedTool }) => {
   };
 
   const handleShapeDragStart = (e) => {
-    setSelectedShape(e.target);
+    // Only allow dragging if the shape's layer is selected and visible
+    if (
+      e.target.attrs.layer === selectedLayer &&
+      layers[e.target.attrs.layer]?.visible
+    ) {
+      e.target.draggable(true);
+    } else {
+      e.target.draggable(false);
+    }
   };
 
   const handleShapeDragMove = (e) => {
@@ -177,7 +215,12 @@ const LayoutEditor = ({ selectedTool }) => {
   };
 
   const handleShapeDragEnd = () => {
-    setSelectedShape(null);
+    // Reset draggable state
+    shapes.forEach((shape) => {
+      if (shape.layer === selectedLayer && layers[shape.layer]?.visible) {
+        shape.draggable = true;
+      }
+    });
   };
 
   return (
@@ -232,22 +275,26 @@ const LayoutEditor = ({ selectedTool }) => {
           ))}
 
           {/* Draw existing shapes */}
-          {shapes.map((shape, i) => (
-            <Rect
-              key={i}
-              {...shape}
-              fill="rgba(0, 255, 0, 0.3)"
-              stroke="#00ff00"
-              draggable={selectedTool === "select"}
-              onDragStart={handleShapeDragStart}
-              onDragMove={handleShapeDragMove}
-              onDragEnd={handleShapeDragEnd}
-            />
-          ))}
+          {shapes.map(
+            (shape, i) =>
+              layers[shape.layer]?.visible && (
+                <Rect
+                  key={i}
+                  {...shape}
+                  {...LAYER_COLORS[shape.layer]}
+                  draggable={
+                    selectedTool === "select" && shape.layer === selectedLayer
+                  }
+                  onDragStart={handleShapeDragStart}
+                  onDragMove={handleShapeDragMove}
+                  onDragEnd={handleShapeDragEnd}
+                />
+              )
+          )}
 
           {/* Draw shape being created */}
-          {newShape && (
-            <Rect {...newShape} fill="rgba(0, 255, 0, 0.3)" stroke="#00ff00" />
+          {newShape && layers[newShape.layer]?.visible && (
+            <Rect {...newShape} {...LAYER_COLORS[newShape.layer]} />
           )}
         </Layer>
       </Stage>
