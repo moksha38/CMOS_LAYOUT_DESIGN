@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Box, CssBaseline } from "@mui/material";
 import LayoutEditor from "./components/LayoutEditor";
 import Toolbar from "./components/Toolbar";
@@ -18,6 +18,13 @@ function App() {
   const [selectedTool, setSelectedTool] = useState("select");
   const [layers, setLayers] = useState(initialLayers);
   const [selectedLayer, setSelectedLayer] = useState(null);
+  const [drcViolations, setDrcViolations] = useState([]);
+  const layoutEditorRef = useRef(null);
+
+  useEffect(() => {
+    console.log("App component mounted");
+    console.log("layoutEditorRef:", layoutEditorRef.current);
+  }, []);
 
   const handleToolSelect = (tool) => {
     console.log("Tool selected:", tool);
@@ -37,12 +44,35 @@ function App() {
 
   const handleLayerSelect = (layerId) => {
     console.log("Layer selected:", layerId);
+    // First, deselect all layers
+    setLayers((prev) => {
+      const updatedLayers = {};
+      Object.keys(prev).forEach((key) => {
+        updatedLayers[key] = {
+          ...prev[key],
+          selected: key === layerId,
+        };
+      });
+      return updatedLayers;
+    });
+    // Then set the selected layer
     setSelectedLayer(layerId);
   };
 
+  const handleDRCCheck = (violations) => {
+    console.log("DRC violations received in App:", violations);
+    setDrcViolations(violations);
+  };
+
   const handleRunDRC = () => {
-    // This will be implemented later with actual DRC logic
-    console.log("Running DRC...");
+    console.log("handleRunDRC called in App");
+    console.log("layoutEditorRef.current:", layoutEditorRef.current);
+    if (layoutEditorRef.current?.runDRC) {
+      console.log("Calling runDRC on layout editor");
+      layoutEditorRef.current.runDRC();
+    } else {
+      console.error("runDRC not available on layout editor");
+    }
   };
 
   return (
@@ -51,9 +81,11 @@ function App() {
       <Toolbar onToolSelect={handleToolSelect} selectedTool={selectedTool} />
       <Box sx={{ flex: 1, display: "flex" }}>
         <LayoutEditor
+          ref={layoutEditorRef}
           selectedTool={selectedTool}
           selectedLayer={selectedLayer}
           layers={layers}
+          onDRCCheck={handleDRCCheck}
         />
         <LayerPanel
           layers={layers}
@@ -61,7 +93,7 @@ function App() {
           onLayerSelect={handleLayerSelect}
           selectedLayer={selectedLayer}
         />
-        <DRCPanel onRunDRC={handleRunDRC} />
+        <DRCPanel violations={drcViolations} onRunDRC={handleRunDRC} />
       </Box>
     </Box>
   );

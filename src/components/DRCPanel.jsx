@@ -1,106 +1,58 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   Box,
+  Button,
   Typography,
   List,
   ListItem,
   ListItemText,
-  Button,
-  Chip,
   Divider,
 } from "@mui/material";
-import { CheckCircle, Error, Warning } from "@mui/icons-material";
+import { CheckCircle as DRCIcon } from "@mui/icons-material";
 
-const DRCPanel = ({ onRunDRC }) => {
-  const [drcResults, setDrcResults] = useState([]);
+const DRCPanel = ({ violations, onRunDRC }) => {
+  console.log("DRCPanel received violations:", violations);
 
   const handleRunDRC = () => {
-    // This will be implemented later with actual DRC logic
-    const mockResults = [
-      {
-        id: 1,
-        type: "error",
-        message: "Minimum width violation in Metal 1",
-        location: "x:100, y:200",
-      },
-      {
-        id: 2,
-        type: "warning",
-        message: "Spacing violation in Poly layer",
-        location: "x:300, y:400",
-      },
-      {
-        id: 3,
-        type: "success",
-        message: "All other rules passed",
-        location: "Global",
-      },
-    ];
-    setDrcResults(mockResults);
-  };
-
-  const getStatusIcon = (type) => {
-    switch (type) {
-      case "error":
-        return <Error color="error" />;
-      case "warning":
-        return <Warning color="warning" />;
-      case "success":
-        return <CheckCircle color="success" />;
-      default:
-        return null;
+    console.log("Run DRC button clicked in DRCPanel");
+    if (typeof onRunDRC === "function") {
+      onRunDRC();
+    } else {
+      console.error("onRunDRC is not a function:", onRunDRC);
     }
   };
 
   return (
-    <Box sx={{ width: "300px", borderLeft: "1px solid #ccc", p: 2 }}>
+    <Box sx={{ width: "250px", borderLeft: "1px solid #ccc", p: 2 }}>
       <Typography variant="h6" sx={{ mb: 2 }}>
-        Design Rule Check
+        DRC Results
       </Typography>
       <Button
         variant="contained"
-        color="primary"
-        fullWidth
+        startIcon={<DRCIcon />}
         onClick={handleRunDRC}
         sx={{ mb: 2 }}
       >
         Run DRC
       </Button>
-      <Divider sx={{ my: 2 }} />
-      <List>
-        {drcResults.map((result) => (
-          <ListItem key={result.id}>
-            <ListItemText
-              primary={
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  {getStatusIcon(result.type)}
-                  <Typography variant="body2">{result.message}</Typography>
-                </Box>
-              }
-              secondary={
-                <Box
-                  sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1 }}
-                >
-                  <Chip
-                    label={result.type}
-                    size="small"
-                    color={
-                      result.type === "error"
-                        ? "error"
-                        : result.type === "warning"
-                        ? "warning"
-                        : "success"
-                    }
-                  />
-                  <Typography variant="caption" color="text.secondary">
-                    {result.location}
-                  </Typography>
-                </Box>
-              }
-            />
-          </ListItem>
-        ))}
-      </List>
+      <Divider sx={{ mb: 2 }} />
+      {!violations || violations.length === 0 ? (
+        <Typography color="success.main">No DRC violations found</Typography>
+      ) : (
+        <List>
+          {violations.map((violation, index) => (
+            <ListItem key={index}>
+              <ListItemText
+                primary={violation.message}
+                secondary={`Type: ${violation.type} | Layer: ${violation.layer}`}
+                sx={{
+                  color: "error.main",
+                }}
+              />
+            </ListItem>
+          ))}
+        </List>
+      )}
     </Box>
   );
 };
