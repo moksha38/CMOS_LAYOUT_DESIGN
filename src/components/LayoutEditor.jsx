@@ -1,7 +1,8 @@
 import React, { useRef, useState, useEffect, forwardRef } from "react";
-import { Stage, Layer, Rect, Line, Group } from "react-konva";
+import { Stage, Layer, Rect, Line, Group, Text } from "react-konva";
 import { Box, IconButton, Stack } from "@mui/material";
 import { ZoomIn, ZoomOut } from "@mui/icons-material";
+import { v4 as uuidv4 } from "uuid";
 import {
   checkWidthViolations,
   checkSpacingViolations,
@@ -235,6 +236,7 @@ const LayoutEditor = forwardRef(
         if (Math.abs(newShape.width) > 0 && Math.abs(newShape.height) > 0) {
           // Normalize negative dimensions
           const normalizedShape = {
+            id: uuidv4(),
             x: newShape.width < 0 ? newShape.x + newShape.width : newShape.x,
             y: newShape.height < 0 ? newShape.y + newShape.height : newShape.y,
             width: Math.abs(newShape.width),
@@ -249,6 +251,8 @@ const LayoutEditor = forwardRef(
     };
 
     const handleShapeDragStart = (e) => {
+      const shapeId = e.target.attrs.id;
+      console.log("Drag start for shape with ID:", shapeId);
       const shape = e.target;
       console.log("Drag start:", {
         shapeLayer: shape.attrs.layer,
@@ -259,28 +263,29 @@ const LayoutEditor = forwardRef(
     };
 
     const handleShapeDragMove = (e) => {
+      const shapeId = e.target.attrs.id; // Get the ID of the shape being dragged
       const pos = e.target.getStage().getPointerPosition();
       const scaledPos = {
         x: (pos.x - position.x) / scale,
         y: (pos.y - position.y) / scale,
       };
 
-      // Update shape position with grid snapping
-      const updatedShapes = shapes.map((shape) => {
-        if (shape === e.target.attrs) {
-          const newShape = {
-            ...shape,
-            x: snapToGrid(scaledPos.x),
-            y: snapToGrid(scaledPos.y),
-          };
-          console.log("Updating shape position:", newShape);
-          return newShape;
-        }
-        return shape;
-      });
-      setShapes(updatedShapes);
+      // Update the position of the dragged shape
+      setShapes((prevShapes) =>
+        prevShapes.map((shape) => {
+          if (shape.id === shapeId) {
+            const newShape = {
+              ...shape,
+              x: snapToGrid(scaledPos.x),
+              y: snapToGrid(scaledPos.y),
+            };
+            console.log("Updating shape position:", newShape);
+            return newShape;
+          }
+          return shape;
+        })
+      );
     };
-
     const handleShapeDragEnd = (e) => {
       const shape = e.target;
       console.log("Drag end:", {
@@ -344,6 +349,7 @@ const LayoutEditor = forwardRef(
           scaleY={scale}
           x={position.x}
           y={position.y}
+          draggable={false}
         >
           <Layer>
             {/* Draw grid */}
@@ -355,16 +361,14 @@ const LayoutEditor = forwardRef(
             ))}
 
             {/* Draw existing shapes */}
-            {shapes.map(
-              (shape, i) =>
-                layers[shape.layer]?.visible && (
+            {shapes.map((shape) =>
+              layers[shape.layer]?.visible ? (
+                <Group key={shape.id}>
                   <Rect
-                    key={i}
+                    id={shape.id}
                     {...shape}
                     {...LAYER_COLORS[shape.layer]}
-                    draggable={
-                      selectedTool === "select" && shape.layer === selectedLayer
-                    }
+                    draggable={true}
                     onDragStart={handleShapeDragStart}
                     onDragMove={handleShapeDragMove}
                     onDragEnd={handleShapeDragEnd}
@@ -375,12 +379,35 @@ const LayoutEditor = forwardRef(
                     }
                     strokeWidth={violatingShapes.includes(shape) ? 2 : 1}
                   />
-                )
+                  <Text
+                    x={shape.x + shape.width / 2 - 30}
+                    y={shape.y + shape.height / 2}
+                    text={`${Math.round(shape.width / LAMBDA)}λ x ${Math.round(
+                      shape.height / LAMBDA
+                    )}λ`}
+                    fontSize={12}
+                    fill="#000"
+                    align="center"
+                  />
+                </Group>
+              ) : null
             )}
 
             {/* Draw shape being created */}
             {newShape && layers[newShape.layer]?.visible && (
-              <Rect {...newShape} {...LAYER_COLORS[newShape.layer]} />
+              <Group>
+                <Rect {...newShape} {...LAYER_COLORS[newShape.layer]} />
+                <Text
+                  x={newShape.x + newShape.width / 2 - 30}
+                  y={newShape.y + newShape.height / 2}
+                  text={`${Math.round(
+                    Math.abs(newShape.width) / LAMBDA
+                  )}λ x ${Math.round(Math.abs(newShape.height) / LAMBDA)}λ`}
+                  fontSize={12}
+                  fill="#000"
+                  align="center"
+                />
+              </Group>
             )}
           </Layer>
         </Stage>
